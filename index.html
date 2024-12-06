@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polígonos de Voronoi con Turf.js</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <style>
+    #map {
+      height: 80vh;
+    }
+    #controls {
+      padding: 10px;
+      background: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label for="basemap">Basemap URL (opcional): </label>
+    <input id="basemap" type="text" placeholder="Deja en blanco para OpenStreetMap" />
+    <label for="csv">Subir CSV con puntos: </label>
+    <input id="csv" type="file" accept=".csv" />
+    <button id="generate">Generar Voronoi</button>
+  </div>
+  <div id="map"></div>
+  <script>
+    // Crear mapa con Leaflet
+    let map = null;
+
+    // Función para inicializar el mapa
+    function initializeMap(basemapUrl) {
+      if (map) map.remove(); // Eliminar el mapa existente si lo hay
+      map = L.map('map').setView([-37.3292, -59.1332], 13);
+      L.tileLayer(basemapUrl || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+      }).addTo(map);
+    }
+
+    // Leer CSV y convertirlo a GeoJSON
+    function csvToGeoJSON(csvData) {
+      const lines = csvData.split('\n').filter(line => line.trim() !== '');
+      const headers = lines[0].split(',');
+      const latIndex = headers.indexOf('lat');
+      const lonIndex = headers.indexOf('lon');
+      if (latIndex === -1 || lonIndex === -1) {
+        alert('El archivo CSV debe contener columnas "lat" y "lon".');
+        return null;
+      }
+
+      const features = lines.slice(1).map(line => {
+        const values = line.split(',');
+        const lat = parseFloat(values[latIndex]);
+        const lon = parseFloat(values[lonIndex]);
+        if (!isNaN(lat) && !isNaN(lon)) {
+          return {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [lon, lat] },
+            properties: {}
+          };
+        }
+      }).filter(feature => feature); // Filtrar valores no válidos
+
+      return { type: 'FeatureCollection', features };
+    }
+
+    // Función para generar Voronoi y añadir al mapa
+    function generateVoronoi(pointsGeoJSON) {
+      const bbox = turf.bbox(pointsGeoJSON); // Calcular el bounding box
+      const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
+
+      // Añadir los polígonos de Voronoi al mapa
+      L.geoJSON(voronoi, {
+        style: () => ({
+          color: 'black',
+          weight: 1,
+          fillColor: 'orange',
+          fillOpacity: 0.5
+        })
+      }).addTo(map);
+
+      // Añadir los puntos originales al mapa
+      L.geoJSON(pointsGeoJSON, {
+        pointToLayer: (feature, latlng) => {
+          return L.circleMarker(latlng, {
+            radius: 6,
+            fillColor: 'green',
+            color: 'black',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.9
+          });
+        }
+      }).addTo(map);
+    }
+
+    // Manejar el clic en "Generar Voronoi"
+    document.getElementById('generate').addEventListener('click', () => {
+      const basemapUrl = document.getElementById('basemap').value;
+      const csvInput = document.getElementById('csv').files[0];
+
+      if (!csvInput) {
+        alert('Por favor, sube un archivo CSV.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const csvData = event.target.result;
+        const pointsGeoJSON = csvToGeoJSON(csvData);
+        if (pointsGeoJSON) {
+          initializeMap(basemapUrl);
+          generateVoronoi(pointsGeoJSON);
+        }
+      };
+      reader.readAsText(csvInput);
+    });
+
+    // Inicializar el mapa con OpenStreetMap por defecto
+    initializeMap();
+  </script>
+</body>
+</html>
