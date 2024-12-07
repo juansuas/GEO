@@ -3,51 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Polígonos de Voronoi con Turf.js</title>
+  <title>Polígonos a Pedido de Linares.js</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <style>
-    #map {
-      height: 80vh;
+    body {
+      display: flex;
+      margin: 0;
     }
-    #controls {
+
+    #sidebar {
+      width: 250px;
+      background: #f4f4f4;
+      padding: 15px;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    #map {
+      flex: 1;
+      height: 100vh;
+    }
+
+    label {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    button, select {
+      margin-top: 15px;
       padding: 10px;
-      background: #f9f9f9;
+      border: none;
+      border-radius: 15px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    select {
+      background-color: white;
+      color: #007bff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    button.active {
+      background-color: #28a745;
+    }
+
+    input {
+      margin-top: 5px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <label for="basemap">Basemap URL (opcional): </label>
-    <input id="basemap" type="text" placeholder="Deja en blanco para OpenStreetMap" />
-    <label for="csv">Subir CSV con puntos: </label>
+  <div id="sidebar">
+    <label for="basemap">Basemap:</label>
+    <select id="basemap">
+      <option value="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" selected>OpenStreetMap</option>
+      <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap color</option>
+      <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap Gris</option>
+    </select>
+    <label for="csv">Subir CSV:</label>
     <input id="csv" type="file" accept=".csv" />
-    <button id="generate">Generar Voronoi</button>
+    <button id="toggle-points">Visualizar Puntos</button>
+    <button id="toggle-polygons">Visualizar Polígonos</button>
+    <button id="export">Exportar GeoJSON</button>
   </div>
   <div id="map"></div>
   <script>
-    // Crear mapa con Leaflet
     let map = null;
-    let pointsLayer = null; // Capa para los puntos
+    let pointsLayer = null;
+    let voronoiLayer = null;
+    let pointsGeoJSON = null;
 
-    // Función para inicializar el mapa
+    // Inicializar el mapa
     function initializeMap(basemapUrl) {
-      if (map) map.remove(); // Eliminar el mapa existente si lo hay
+      if (map) map.remove();
       map = L.map('map').setView([-37.3292, -59.1332], 13);
-      L.tileLayer(basemapUrl || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      L.tileLayer(basemapUrl, {
         maxZoom: 18,
       }).addTo(map);
     }
 
-    // Leer CSV y convertirlo a GeoJSON
+    // Convertir CSV a GeoJSON
     function csvToGeoJSON(csvData) {
       const lines = csvData.split('\n').filter(line => line.trim() !== '');
       const headers = lines[0].split(',');
       const latIndex = headers.indexOf('lat');
       const lonIndex = headers.indexOf('lon');
       if (latIndex === -1 || lonIndex === -1) {
-        alert('El archivo CSV debe contener columnas "lat" y "lon".');
+        alert('El archivo CSV debe tener columnas "lat" y "lon".');
         return null;
       }
 
@@ -62,71 +120,127 @@
             properties: {}
           };
         }
-      }).filter(feature => feature); // Filtrar valores no válidos
+      }).filter(feature => feature);
 
       return { type: 'FeatureCollection', features };
     }
 
-    // Función para generar Voronoi y añadir al mapa
-    function generateVoronoi(pointsGeoJSON) {
-      const bbox = turf.bbox(pointsGeoJSON); // Calcular el bounding box
-      const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
-
-      // Añadir los polígonos de Voronoi al mapa
-      L.geoJSON(voronoi, {
-        style: () => ({
-          color: 'black',
-          weight: 1,
-          fillColor: 'orange',
-          fillOpacity: 0.5
-        })
-      }).addTo(map);
-
-      // Añadir los puntos originales al mapa con zoom automático
-      if (pointsLayer) {
-        map.removeLayer(pointsLayer); // Eliminar la capa anterior si existe
+    // Toggle para visualizar puntos
+    function togglePoints() {
+      const button = document.getElementById('toggle-points');
+      if (!pointsLayer) {
+        alert('Subir un archivo CSV para visualizar los puntos.');
+        return;
       }
-      pointsLayer = L.geoJSON(pointsGeoJSON, {
-        pointToLayer: (feature, latlng) => {
-          return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: 'green',
-            color: 'black',
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.9
-          });
-        }
-      }).addTo(map);
-
-      // Ajustar el zoom a los puntos
-      map.fitBounds(pointsLayer.getBounds());
+      if (map.hasLayer(pointsLayer)) {
+        map.removeLayer(pointsLayer);
+        button.classList.remove('active');
+      } else {
+        map.addLayer(pointsLayer);
+        button.classList.add('active');
+        map.fitBounds(pointsLayer.getBounds());
+      }
     }
 
-    // Manejar el clic en "Generar Voronoi"
-    document.getElementById('generate').addEventListener('click', () => {
-      const basemapUrl = document.getElementById('basemap').value;
-      const csvInput = document.getElementById('csv').files[0];
+    // Toggle para visualizar polígonos
+    function togglePolygons() {
+      const button = document.getElementById('toggle-polygons');
+      if (!voronoiLayer) {
+        if (!pointsGeoJSON) {
+          alert('Cargar un archivo CSV y generar los puntos antes de visualizar los polígonos.');
+          return;
+        }
+        generateVoronoi(); // Genera los polígonos si no existen
+      }
+      if (map.hasLayer(voronoiLayer)) {
+        map.removeLayer(voronoiLayer);
+        button.classList.remove('active');
+      } else {
+        map.addLayer(voronoiLayer);
+        button.classList.add('active');
+      }
+    }
 
-      if (!csvInput) {
-        alert('Por favor, sube un archivo CSV.');
+    // Generar polígonos de Voronoi
+    function generateVoronoi() {
+      if (!pointsGeoJSON) {
+        alert('Primero cargar un archivo CSV con los puntos.');
+        return;
+      }
+      const bbox = turf.bbox(pointsGeoJSON);
+      const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
+
+      if (!voronoi || voronoi.features.length === 0) {
+        alert('No se pudieron generar los polígonos');
         return;
       }
 
+      voronoiLayer = L.geoJSON(voronoi, {
+        style: () => ({
+          color: 'green',
+          weight: 1.2,
+          fillColor: 'green',
+          fillOpacity: 0.3
+        })
+      });
+    }
+
+    // Exportar polígonos como GeoJSON
+    function exportGeoJSON() {
+      if (!voronoiLayer) {
+        alert('Primero genera los polígonos de Voronoi.');
+        return;
+      }
+      const data = voronoiLayer.toGeoJSON();
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'poligonos.geojson';
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Eventos
+    document.getElementById('toggle-points').addEventListener('click', togglePoints);
+    document.getElementById('toggle-polygons').addEventListener('click', togglePolygons);
+    document.getElementById('basemap').addEventListener('change', (event) => {
+      const basemapUrl = event.target.value;
+      initializeMap(basemapUrl);
+    });
+    document.getElementById('csv').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
       const reader = new FileReader();
-      reader.onload = (event) => {
-        const csvData = event.target.result;
-        const pointsGeoJSON = csvToGeoJSON(csvData);
+      reader.onload = (e) => {
+        const csvData = e.target.result;
+        pointsGeoJSON = csvToGeoJSON(csvData);
+
         if (pointsGeoJSON) {
-          initializeMap(basemapUrl);
-          generateVoronoi(pointsGeoJSON);
+          if (pointsLayer) map.removeLayer(pointsLayer);
+          pointsLayer = L.geoJSON(pointsGeoJSON, {
+            pointToLayer: (feature, latlng) => {
+              return L.circleMarker(latlng, {
+                radius: 6,
+                fillColor: 'blue',
+                color: 'black',
+                weight: 0.5,
+                fillOpacity: 0.7
+              });
+            }
+          });
+          map.addLayer(pointsLayer);
+          map.fitBounds(pointsLayer.getBounds());
+          document.getElementById('toggle-points').classList.add('active');
         }
       };
-      reader.readAsText(csvInput);
+      reader.readAsText(file);
     });
+    document.getElementById('export').addEventListener('click', exportGeoJSON);
 
-    // Inicializar el mapa con OpenStreetMap por defecto
-    initializeMap();
+    // Inicializar mapa por defecto
+    initializeMap('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
   </script>
 </body>
 </html>
