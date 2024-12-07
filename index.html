@@ -29,6 +29,7 @@
   <script>
     // Crear mapa con Leaflet
     let map = null;
+    let pointsLayer = null; // Capa para los puntos
 
     // Función para inicializar el mapa
     function initializeMap(basemapUrl) {
@@ -81,8 +82,11 @@
         })
       }).addTo(map);
 
-      // Añadir los puntos originales al mapa
-      L.geoJSON(pointsGeoJSON, {
+      // Añadir los puntos originales al mapa con zoom automático
+      if (pointsLayer) {
+        map.removeLayer(pointsLayer); // Eliminar la capa anterior si existe
+      }
+      pointsLayer = L.geoJSON(pointsGeoJSON, {
         pointToLayer: (feature, latlng) => {
           return L.circleMarker(latlng, {
             radius: 6,
@@ -94,6 +98,9 @@
           });
         }
       }).addTo(map);
+
+      // Ajustar el zoom a los puntos
+      map.fitBounds(pointsLayer.getBounds());
     }
 
     // Manejar el clic en "Generar Voronoi"
