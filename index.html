@@ -140,6 +140,7 @@
       </div>
     </div>
 
+
     <button id="export">Exportar GeoJSON</button>
     <button id="reset">Reiniciar</button>
   </div>
@@ -166,24 +167,35 @@
       if (voronoiLayer) map.addLayer(voronoiLayer);
     }
 
-    function csvToGeoJSON(csvData) {
+        function csvToGeoJSON(csvData) {
       const lines = csvData.split('\n').filter(line => line.trim() !== '');
       const headers = lines[0].split(',');
       const latIndex = headers.indexOf('lat');
       const lonIndex = headers.indexOf('lon');
+    
       if (latIndex === -1 || lonIndex === -1) {
         alert('El archivo CSV debe contener columnas "lat" y "lon".');
         return null;
       }
+
       const features = lines.slice(1).map(line => {
         const values = line.split(',');
         const lat = parseFloat(values[latIndex]);
         const lon = parseFloat(values[lonIndex]);
+
         if (!isNaN(lat) && !isNaN(lon)) {
+          // Crear un objeto de propiedades usando las demás columnas
+          const properties = {};
+          headers.forEach((header, index) => {
+            if (index !== latIndex && index !== lonIndex) {
+              properties[header] = values[index];
+            }
+          });
+
           return {
             type: 'Feature',
             geometry: { type: 'Point', coordinates: [lon, lat] },
-            properties: {}
+            properties: properties
           };
         }
       }).filter(Boolean);
@@ -208,6 +220,7 @@
         fillOpacity: parseFloat(document.getElementById('polygon-opacity').value)
       };
     }
+
 
     function updateStyles() {
       if (pointsLayer) {
@@ -249,6 +262,7 @@
       reader.readAsText(file);
     });
 
+  //Controlador para Reset
 
     document.getElementById('reset').addEventListener('click', () => {
       // Limpiar las capas del mapa
@@ -270,10 +284,8 @@
       const csvInput = document.getElementById('csv');
       csvInput.value = ""; // Resetea el input
       csvInput.disabled = false; // Habilitar nuevamente
-
-      // Opcional: Mostrar un mensaje al usuario
-   //   alert('El mapa se ha reiniciado.');
     });
+
 
     document.getElementById('basemap').addEventListener('change', (event) => {
       const basemapUrl = event.target.value;
@@ -327,27 +339,45 @@
     });
 
     // Controladores para exportar GeoJson
-        document.getElementById('export').addEventListener('click', () => {
-      if (voronoiLayer) {
-        const voronoiGeoJSON = voronoiLayer.toGeoJSON();
-        if (voronoiGeoJSON.features && voronoiGeoJSON.features.length > 0) {
-          const blob = new Blob([JSON.stringify(voronoiGeoJSON)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
 
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'poligonos.geojson';
-          a.click();
+      document.getElementById('export').addEventListener('click', () => {
+        if (voronoiLayer && pointsGeoJSON) {
+          const bbox = turf.bbox(pointsGeoJSON);
+          const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
 
-          URL.revokeObjectURL(url); // Limpieza de recursos
+          if (voronoi && voronoi.features && voronoi.features.length > 0) {
+            voronoi.features.forEach((polygon) => {
+              const centroid = turf.centroid(polygon).geometry.coordinates;
+
+              // Encontrar el punto más cercano al centroide
+              const nearestPoint = turf.nearestPoint(turf.point(centroid), pointsGeoJSON);
+
+              if (nearestPoint && nearestPoint.properties) {
+                // Transferir propiedades del punto al polígono
+                polygon.properties = {
+                  ...nearestPoint.properties,
+                  lat: nearestPoint.geometry.coordinates[1], // Latitud
+                  lon: nearestPoint.geometry.coordinates[0]  // Longitud
+                };
+              }
+            });
+
+            const blob = new Blob([JSON.stringify(voronoi)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'PoligonosVoroni.geojson';
+            a.click();
+
+            URL.revokeObjectURL(url); // Limpieza de recursos
+          } else {
+            alert('No hay polígonos para exportar.');
+          }
         } else {
-          alert('No hay polígonos para exportar.');
+          alert('No hay datos de polígonos generados para exportar.');
         }
-      } else {
-        alert('No hay datos de polígonos generados para exportar.');
-      }
-    });
-
+      });
 
     initializeMap('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
   </script>
