@@ -81,6 +81,9 @@
 </head>
 <body>
   <div id="sidebar">
+    <!-- Imagen en la parte superior -->
+    <!--img src="https://previews.123rf.com/images/yupiramos/yupiramos1802/yupiramos180209245/95183979-planeta-tierra-mundo-globo-mapa-icono-ilustraci%C3%B3n-vectorial-dibujo-imagen.jpg" style="width: 100%; border-radius: 10px; margin-bottom: 15px;"-->
+
     <label for="basemap">Basemap:</label>
     <select id="basemap">
       <option value="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" selected>OpenStreetMap</option>
@@ -246,13 +249,30 @@
       reader.readAsText(file);
     });
 
+
     document.getElementById('reset').addEventListener('click', () => {
+      // Limpiar las capas del mapa
       if (pointsLayer) map.removeLayer(pointsLayer);
       if (voronoiLayer) map.removeLayer(voronoiLayer);
       pointsLayer = null;
       voronoiLayer = null;
       pointsGeoJSON = null;
-      document.getElementById('csv').disabled = false; // Habilitar botón CSV
+
+      // Restablecer el mapa base a OpenStreetMap
+      document.getElementById('basemap').value = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      initializeMap("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
+
+      // Limpiar la selección de botones
+      document.getElementById('toggle-points').classList.remove('active');
+      document.getElementById('toggle-polygons').classList.remove('active');
+
+      // Limpiar el campo de entrada del CSV
+      const csvInput = document.getElementById('csv');
+      csvInput.value = ""; // Resetea el input
+      csvInput.disabled = false; // Habilitar nuevamente
+
+      // Opcional: Mostrar un mensaje al usuario
+   //   alert('El mapa se ha reiniciado.');
     });
 
     document.getElementById('basemap').addEventListener('change', (event) => {
