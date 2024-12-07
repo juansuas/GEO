@@ -11,15 +11,17 @@
     body {
       display: flex;
       margin: 0;
+      height: 100vh;
     }
 
     #sidebar {
-      width: 250px;
+      width: 300px;
       background: #f4f4f4;
       padding: 15px;
       box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
       display: flex;
       flex-direction: column;
+      overflow-y: auto;
     }
 
     #map {
@@ -59,12 +61,21 @@
       background-color: #28a745;
     }
 
-    input {
+    input, .slider {
       margin-top: 5px;
-      padding: 8px;
+      padding: 5px;
       border: 1px solid #ddd;
       border-radius: 10px;
       font-size: 14px;
+      width: 100%;
+    }
+
+    .slider-container {
+      margin-top: 10px;
+    }
+
+    h3, h4 {
+      margin: 10px 0 5px;
     }
   </style>
 </head>
@@ -76,12 +87,60 @@
       <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap color</option>
       <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap Gris</option>
     </select>
+
     <label for="csv">Subir CSV:</label>
     <input id="csv" type="file" accept=".csv" />
+
     <button id="toggle-points">Visualizar Puntos</button>
     <button id="toggle-polygons">Visualizar Polígonos</button>
+
+    <div id="style-config">
+      <h3>Configuraciones de Estilo</h3>
+      <h4>Puntos:</h4>
+      <label for="point-color">Color:</label>
+      <select id="point-color">
+        <option value="blue" selected>Azul</option>
+        <option value="red">Rojo</option>
+        <option value="green">Verde</option>
+        <option value="purple">Morado</option>
+        <option value="orange">Naranja</option>
+        <option value="yellow">Amarillo</option>
+        <option value="brown">Marrón</option>
+        <option value="pink">Rosa</option>
+        <option value="black">Negro</option>
+      </select>
+      <div class="slider-container">
+        <label for="point-border-width">Ancho de borde:</label>
+        <input type="range" id="point-border-width" min="0.5" max="4" step="0.1" value="1.5" class="slider">
+      </div>
+
+      <h4>Polígonos:</h4>
+      <label for="polygon-color">Color de Relleno:</label>
+      <select id="polygon-color">
+        <option value="green" selected>Verde</option>
+        <option value="blue">Azul</option>
+        <option value="red">Rojo</option>
+        <option value="purple">Morado</option>
+        <option value="orange">Naranja</option>
+        <option value="yellow">Amarillo</option>
+        <option value="brown">Marrón</option>
+        <option value="pink">Rosa</option>
+        <option value="black">Negro</option>
+      </select>
+      <div class="slider-container">
+        <label for="polygon-opacity">Transparencia:</label>
+        <input type="range" id="polygon-opacity" min="0.1" max="1" step="0.1" value="0.3" class="slider">
+      </div>
+      <div class="slider-container">
+        <label for="polygon-border-width">Ancho de borde:</label>
+        <input type="range" id="polygon-border-width" min="0.5" max="4" step="0.1" value="1.2" class="slider">
+      </div>
+    </div>
+
     <button id="export">Exportar GeoJSON</button>
+    <button id="reset">Reiniciar</button>
   </div>
+
   <div id="map"></div>
   <script>
     let map = null;
@@ -89,26 +148,30 @@
     let voronoiLayer = null;
     let pointsGeoJSON = null;
 
-    // Inicializar el mapa
     function initializeMap(basemapUrl) {
-      if (map) map.remove();
-      map = L.map('map').setView([-37.3292, -59.1332], 13);
-      L.tileLayer(basemapUrl, {
-        maxZoom: 18,
-      }).addTo(map);
+      const currentView = map ? map.getCenter() : [0, 0];
+      const currentZoom = map ? map.getZoom() : 2;
+
+      if (!map) {
+        map = L.map('map').setView(currentView, currentZoom);
+      }
+
+      map.eachLayer(layer => map.removeLayer(layer));
+      L.tileLayer(basemapUrl, { maxZoom: 18 }).addTo(map);
+
+      if (pointsLayer) map.addLayer(pointsLayer);
+      if (voronoiLayer) map.addLayer(voronoiLayer);
     }
 
-    // Convertir CSV a GeoJSON
     function csvToGeoJSON(csvData) {
       const lines = csvData.split('\n').filter(line => line.trim() !== '');
       const headers = lines[0].split(',');
       const latIndex = headers.indexOf('lat');
       const lonIndex = headers.indexOf('lon');
       if (latIndex === -1 || lonIndex === -1) {
-        alert('El archivo CSV debe tener columnas "lat" y "lon".');
+        alert('El archivo CSV debe contener columnas "lat" y "lon".');
         return null;
       }
-
       const features = lines.slice(1).map(line => {
         const values = line.split(',');
         const lat = parseFloat(values[latIndex]);
@@ -120,94 +183,44 @@
             properties: {}
           };
         }
-      }).filter(feature => feature);
+      }).filter(Boolean);
 
       return { type: 'FeatureCollection', features };
     }
 
-    // Toggle para visualizar puntos
-    function togglePoints() {
-      const button = document.getElementById('toggle-points');
-      if (!pointsLayer) {
-        alert('Subir un archivo CSV para visualizar los puntos.');
-        return;
-      }
-      if (map.hasLayer(pointsLayer)) {
+    function getPointStyle() {
+      return {
+        color: 'black',
+        weight: parseFloat(document.getElementById('point-border-width').value),
+        fillColor: document.getElementById('point-color').value,
+        fillOpacity: 0.7
+      };
+    }
+
+    function getPolygonStyle() {
+      return {
+        color: 'black',
+        weight: parseFloat(document.getElementById('polygon-border-width').value),
+        fillColor: document.getElementById('polygon-color').value,
+        fillOpacity: parseFloat(document.getElementById('polygon-opacity').value)
+      };
+    }
+
+    function updateStyles() {
+      if (pointsLayer) {
         map.removeLayer(pointsLayer);
-        button.classList.remove('active');
-      } else {
-        map.addLayer(pointsLayer);
-        button.classList.add('active');
-        map.fitBounds(pointsLayer.getBounds());
+        pointsLayer = L.geoJSON(pointsGeoJSON, {
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
+        }).addTo(map);
       }
-    }
-
-    // Toggle para visualizar polígonos
-    function togglePolygons() {
-      const button = document.getElementById('toggle-polygons');
-      if (!voronoiLayer) {
-        if (!pointsGeoJSON) {
-          alert('Cargar un archivo CSV y generar los puntos antes de visualizar los polígonos.');
-          return;
-        }
-        generateVoronoi(); // Genera los polígonos si no existen
-      }
-      if (map.hasLayer(voronoiLayer)) {
+      if (voronoiLayer) {
         map.removeLayer(voronoiLayer);
-        button.classList.remove('active');
-      } else {
-        map.addLayer(voronoiLayer);
-        button.classList.add('active');
+        const bbox = turf.bbox(pointsGeoJSON);
+        const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
+        voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle }).addTo(map);
       }
     }
 
-    // Generar polígonos de Voronoi
-    function generateVoronoi() {
-      if (!pointsGeoJSON) {
-        alert('Primero cargar un archivo CSV con los puntos.');
-        return;
-      }
-      const bbox = turf.bbox(pointsGeoJSON);
-      const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
-
-      if (!voronoi || voronoi.features.length === 0) {
-        alert('No se pudieron generar los polígonos');
-        return;
-      }
-
-      voronoiLayer = L.geoJSON(voronoi, {
-        style: () => ({
-          color: 'green',
-          weight: 1.2,
-          fillColor: 'green',
-          fillOpacity: 0.3
-        })
-      });
-    }
-
-    // Exportar polígonos como GeoJSON
-    function exportGeoJSON() {
-      if (!voronoiLayer) {
-        alert('Primero genera los polígonos de Voronoi.');
-        return;
-      }
-      const data = voronoiLayer.toGeoJSON();
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'poligonos.geojson';
-      link.click();
-      URL.revokeObjectURL(url);
-    }
-
-    // Eventos
-    document.getElementById('toggle-points').addEventListener('click', togglePoints);
-    document.getElementById('toggle-polygons').addEventListener('click', togglePolygons);
-    document.getElementById('basemap').addEventListener('change', (event) => {
-      const basemapUrl = event.target.value;
-      initializeMap(basemapUrl);
-    });
     document.getElementById('csv').addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -218,28 +231,104 @@
         pointsGeoJSON = csvToGeoJSON(csvData);
 
         if (pointsGeoJSON) {
+          document.getElementById('csv').disabled = true; // Deshabilitar botón CSV
           if (pointsLayer) map.removeLayer(pointsLayer);
           pointsLayer = L.geoJSON(pointsGeoJSON, {
-            pointToLayer: (feature, latlng) => {
-              return L.circleMarker(latlng, {
-                radius: 6,
-                fillColor: 'blue',
-                color: 'black',
-                weight: 0.5,
-                fillOpacity: 0.7
-              });
-            }
-          });
-          map.addLayer(pointsLayer);
+            pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
+          }).addTo(map);
           map.fitBounds(pointsLayer.getBounds());
-          document.getElementById('toggle-points').classList.add('active');
+
+      // Activar botón de visualización de puntos
+          const togglePointsButton = document.getElementById('toggle-points');
+          togglePointsButton.classList.add('active');
         }
       };
       reader.readAsText(file);
     });
-    document.getElementById('export').addEventListener('click', exportGeoJSON);
 
-    // Inicializar mapa por defecto
+    document.getElementById('reset').addEventListener('click', () => {
+      if (pointsLayer) map.removeLayer(pointsLayer);
+      if (voronoiLayer) map.removeLayer(voronoiLayer);
+      pointsLayer = null;
+      voronoiLayer = null;
+      pointsGeoJSON = null;
+      document.getElementById('csv').disabled = false; // Habilitar botón CSV
+    });
+
+    document.getElementById('basemap').addEventListener('change', (event) => {
+      const basemapUrl = event.target.value;
+      initializeMap(basemapUrl);
+    });
+
+    document.getElementById('point-color').addEventListener('change', updateStyles);
+    document.getElementById('point-border-width').addEventListener('input', updateStyles);
+    document.getElementById('polygon-color').addEventListener('change', updateStyles);
+    document.getElementById('polygon-opacity').addEventListener('input', updateStyles);
+    document.getElementById('polygon-border-width').addEventListener('input', updateStyles);
+
+   // Controladores para visualizar puntos y polígonos
+    document.getElementById('toggle-points').addEventListener('click', () => {
+      if (pointsLayer) {
+        if (map.hasLayer(pointsLayer)) {
+          map.removeLayer(pointsLayer);
+          document.getElementById('toggle-points').classList.remove('active');
+        } else {
+          map.addLayer(pointsLayer);
+          document.getElementById('toggle-points').classList.add('active');
+        }
+      } else {
+        alert('No hay puntos para visualizar. Por favor, cargue un archivo CSV primero.');
+      }
+    });
+
+    document.getElementById('toggle-polygons').addEventListener('click', () => {
+      if (voronoiLayer) {
+        if (map.hasLayer(voronoiLayer)) {
+          map.removeLayer(voronoiLayer);
+          document.getElementById('toggle-polygons').classList.remove('active');
+        } else {
+          map.addLayer(voronoiLayer);
+          document.getElementById('toggle-polygons').classList.add('active');
+        }
+      } else {
+        if (pointsGeoJSON) {
+          const bbox = turf.bbox(pointsGeoJSON);
+          const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
+          if (voronoi) {
+            voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle() }).addTo(map);
+            document.getElementById('toggle-polygons').classList.add('active');
+          } else {
+            alert('No se pudo generar el polígono Voronoi.');
+          }
+        } else {
+          alert('No hay datos para generar polígonos. Por favor, cargue un archivo CSV primero.');
+        }
+      }
+    });
+
+    // Controladores para exportar GeoJson
+        document.getElementById('export').addEventListener('click', () => {
+      if (voronoiLayer) {
+        const voronoiGeoJSON = voronoiLayer.toGeoJSON();
+        if (voronoiGeoJSON.features && voronoiGeoJSON.features.length > 0) {
+          const blob = new Blob([JSON.stringify(voronoiGeoJSON)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'poligonos.geojson';
+          a.click();
+
+          URL.revokeObjectURL(url); // Limpieza de recursos
+        } else {
+          alert('No hay polígonos para exportar.');
+        }
+      } else {
+        alert('No hay datos de polígonos generados para exportar.');
+      }
+    });
+
+
     initializeMap('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
   </script>
 </body>
