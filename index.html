@@ -82,8 +82,11 @@
 <body>
   <div id="sidebar">
     <!-- Imagen en la parte superior -->
-    <img src="https://upload.wikimedia.org/wikipedia/commons/1/11/Georgy_Voronoy.jpg" style="width: 100%; border-radius: 10px; margin-bottom: 15px;">
-
+    <div style="text-align: center; margin-bottom: 15px;">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/1/11/Georgy_Voronoy.jpg" alt="Voronoi" style="width: 50%; border-radius: 10px;">
+        <label style="display: block; font-size: 14px; margin-top: 5px; color: #555;">Voronoi</label>
+    </div>
+    
     <label for="basemap">Basemap:</label>
     <select id="basemap">
       <option value="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" selected>OpenStreetMap</option>
