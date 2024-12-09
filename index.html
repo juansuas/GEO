@@ -92,7 +92,9 @@
         <label style="display: block; font-size: 14px; margin-top: 5px; color: #555;">Thiessen</label>
       </div>
     </div>
+
     
+
     <label for="basemap">Basemap:</label>
     <select id="basemap">
       <option value="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" selected>OpenStreetMap</option>
@@ -231,20 +233,29 @@
     }
 
 
-    function updateStyles() {
-      if (pointsLayer) {
-        map.removeLayer(pointsLayer);
-        pointsLayer = L.geoJSON(pointsGeoJSON, {
-          pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
-        }).addTo(map);
-      }
-      if (voronoiLayer) {
-        map.removeLayer(voronoiLayer);
-        const bbox = turf.bbox(pointsGeoJSON);
-        const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
-        voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle }).addTo(map);
-      }
+function updateStyles() {
+  const togglePointsButton = document.getElementById('toggle-points');
+  const togglePolygonsButton = document.getElementById('toggle-polygons');
+
+  // Actualizar estilo de los puntos si están visibles
+  if (pointsLayer && togglePointsButton.classList.contains('active')) {
+    map.removeLayer(pointsLayer);
+    pointsLayer = L.geoJSON(pointsGeoJSON, {
+      pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
+    }).addTo(map);
+  }
+
+  // Actualizar estilo de los polígonos si están visibles
+  if (voronoiLayer && togglePolygonsButton.classList.contains('active')) {
+    map.removeLayer(voronoiLayer);
+    const bbox = turf.bbox(pointsGeoJSON);
+    const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
+    if (voronoi) {
+      voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle }).addTo(map);
     }
+  }
+}
+
 
     document.getElementById('csv').addEventListener('change', (event) => {
       const file = event.target.files[0];
