@@ -93,7 +93,7 @@
       </div>
     </div>
 
-    
+
 
     <label for="basemap">Basemap:</label>
     <select id="basemap">
@@ -127,6 +127,29 @@
         <label for="point-border-width">Ancho de borde:</label>
         <input type="range" id="point-border-width" min="0.5" max="4" step="0.1" value="1.5" class="slider">
       </div>
+
+      <h3>Área de Estudio</h3>
+      <label for="study-area">Subir GeoJSON:</label>
+      <input id="study-area" type="file" accept=".geojson" />
+      <button id="toggle-study-area">Visualizar Área de Estudio</button>
+      <h4>Estilo del Área:</h4>
+      <label for="study-area-color">Color de Relleno:</label>
+      <select id="study-area-color">
+        <option value="blue" selected>Azul</option>
+        <option value="red">Rojo</option>
+        <option value="green">Verde</option>
+        <option value="purple">Morado</option>
+        <option value="orange">Naranja</option>
+      </select>
+      <div class="slider-container">
+        <label for="study-area-opacity">Transparencia:</label>
+        <input type="range" id="study-area-opacity" min="0.1" max="1" step="0.1" value="0.5" class="slider">
+      </div>
+      <div class="slider-container">
+        <label for="study-area-border-width">Ancho de Borde:</label>
+        <input type="range" id="study-area-border-width" min="0.5" max="4" step="0.1" value="1.5" class="slider">
+      </div>
+
 
       <h4>Polígonos:</h4>
       <label for="polygon-color">Color de Relleno:</label>
@@ -162,6 +185,9 @@
     let pointsLayer = null;
     let voronoiLayer = null;
     let pointsGeoJSON = null;
+    let studyAreaLayer = null;
+    let studyAreaGeoJSON = null;
+
 
     function initializeMap(basemapUrl) {
       const currentView = map ? map.getCenter() : [0, 0];
@@ -171,21 +197,45 @@
         map = L.map('map').setView(currentView, currentZoom);
       }
 
-      map.eachLayer(layer => map.removeLayer(layer));
+      // Eliminar el mapa base actual
+      map.eachLayer(layer => {
+        if (layer._url !== basemapUrl) {
+          map.removeLayer(layer);
+        }
+      });
+
+      // Agregar el nuevo mapa base
       L.tileLayer(basemapUrl, { maxZoom: 18 }).addTo(map);
 
-      if (pointsLayer) map.addLayer(pointsLayer);
-      if (voronoiLayer) map.addLayer(voronoiLayer);
+      // Re-agregar capas activas
+      if (pointsLayer && document.getElementById('toggle-points').classList.contains('active')) {
+        map.addLayer(pointsLayer);
+      }
+
+      if (voronoiLayer && document.getElementById('toggle-polygons').classList.contains('active')) {
+        map.addLayer(voronoiLayer);
+      }
+
+      if (studyAreaLayer && document.getElementById('toggle-study-area').classList.contains('active')) {
+        map.addLayer(studyAreaLayer);
+      }
     }
+
+
 
     function csvToGeoJSON(csvData) {
       const lines = csvData.split('\n').filter(line => line.trim() !== '');
-      const headers = lines[0].split(',').map(header => header.trim().toLowerCase()); // Convertir encabezados a minúsculas
+      if (lines.length < 2) {
+        alert('El archivo CSV no contiene suficientes datos.');
+        return null;
+      }
+
+      const headers = lines[0].split(',').map(header => header.trim().toLowerCase());
       const latIndex = headers.indexOf('lat');
       const lonIndex = headers.indexOf('lon');
 
       if (latIndex === -1 || lonIndex === -1) {
-        alert('El archivo CSV debe contener columnas "lat" y "lon" (no importa mayúsculas/minúsculas).');
+        alert('El archivo CSV debe contener columnas "lat" y "lon".');
         return null;
       }
 
@@ -195,7 +245,6 @@
         const lon = parseFloat(values[lonIndex]);
 
         if (!isNaN(lat) && !isNaN(lon)) {
-          // Crear un objeto de propiedades usando las demás columnas
           const properties = {};
           headers.forEach((header, index) => {
             if (index !== latIndex && index !== lonIndex) {
@@ -210,6 +259,11 @@
           };
         }
       }).filter(Boolean);
+
+      if (features.length === 0) {
+        alert('El archivo CSV no contiene puntos válidos.');
+        return null;
+      }
 
       return { type: 'FeatureCollection', features };
     }
@@ -233,29 +287,40 @@
       };
     }
 
-
-function updateStyles() {
-  const togglePointsButton = document.getElementById('toggle-points');
-  const togglePolygonsButton = document.getElementById('toggle-polygons');
-
-  // Actualizar estilo de los puntos si están visibles
-  if (pointsLayer && togglePointsButton.classList.contains('active')) {
-    map.removeLayer(pointsLayer);
-    pointsLayer = L.geoJSON(pointsGeoJSON, {
-      pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
-    }).addTo(map);
-  }
-
-  // Actualizar estilo de los polígonos si están visibles
-  if (voronoiLayer && togglePolygonsButton.classList.contains('active')) {
-    map.removeLayer(voronoiLayer);
-    const bbox = turf.bbox(pointsGeoJSON);
-    const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
-    if (voronoi) {
-      voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle }).addTo(map);
+    function getStudyAreaStyle() {
+      return {
+        color: 'black',
+        weight: parseFloat(document.getElementById('study-area-border-width').value),
+        fillColor: document.getElementById('study-area-color').value,
+        fillOpacity: parseFloat(document.getElementById('study-area-opacity').value),
+      };
     }
-  }
-}
+
+
+    function updateStyles() {
+      if (pointsGeoJSON && pointsLayer && document.getElementById('toggle-points').classList.contains('active')) {
+        map.removeLayer(pointsLayer);
+        pointsLayer = L.geoJSON(pointsGeoJSON, {
+          pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
+        }).addTo(map);
+      }
+
+      if (pointsGeoJSON && voronoiLayer && document.getElementById('toggle-polygons').classList.contains('active')) {
+        map.removeLayer(voronoiLayer);
+        const bbox = turf.bbox(pointsGeoJSON);
+        const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
+        if (voronoi) {
+          voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle }).addTo(map);
+        }
+      }
+    }
+
+    function updateStudyAreaStyle() {
+      if (studyAreaGeoJSON && studyAreaLayer && document.getElementById('toggle-study-area').classList.contains('active')) {
+        map.removeLayer(studyAreaLayer);
+        studyAreaLayer = L.geoJSON(studyAreaGeoJSON, { style: getStudyAreaStyle() }).addTo(map);
+      }
+    }
 
 
     document.getElementById('csv').addEventListener('change', (event) => {
@@ -283,29 +348,79 @@ function updateStyles() {
       reader.readAsText(file);
     });
 
-  //Controlador para Reset
+// Controlador carga "Área de studio"
+    document.getElementById('study-area').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
 
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const geojson = JSON.parse(e.target.result);
+          if (!geojson.features || !geojson.features.length) {
+            alert('El archivo GeoJSON no contiene características válidas.');
+            studyAreaGeoJSON = null;
+            return;
+          }
+          studyAreaGeoJSON = geojson;
+          alert('Área de estudio cargada correctamente.');
+        } catch (error) {
+          alert('Error al cargar el archivo GeoJSON. Verifique el formato.');
+          studyAreaGeoJSON = null;
+        }
+      };
+      reader.readAsText(file);
+    });
+
+
+      document.getElementById('toggle-study-area').addEventListener('click', () => {
+        if (!studyAreaGeoJSON) {
+          alert('Por favor, cargue un archivo GeoJSON antes de visualizar el área de estudio.');
+          return;
+        }
+
+        if (studyAreaLayer) {
+          if (map.hasLayer(studyAreaLayer)) {
+            map.removeLayer(studyAreaLayer);
+            document.getElementById('toggle-study-area').classList.remove('active');
+          } else {
+            studyAreaLayer = L.geoJSON(studyAreaGeoJSON, { style: getStudyAreaStyle() }).addTo(map);
+            map.fitBounds(studyAreaLayer.getBounds());
+            document.getElementById('toggle-study-area').classList.add('active');
+          }
+        } else {
+          studyAreaLayer = L.geoJSON(studyAreaGeoJSON, { style: getStudyAreaStyle() }).addTo(map);
+          map.fitBounds(studyAreaLayer.getBounds());
+          document.getElementById('toggle-study-area').classList.add('active');
+        }
+      });
+
+
+// Controlador para Reset
     document.getElementById('reset').addEventListener('click', () => {
-      // Limpiar las capas del mapa
       if (pointsLayer) map.removeLayer(pointsLayer);
       if (voronoiLayer) map.removeLayer(voronoiLayer);
+      if (studyAreaLayer) map.removeLayer(studyAreaLayer);
+
       pointsLayer = null;
       voronoiLayer = null;
-      pointsGeoJSON = null;
+      studyAreaLayer = null;
 
-      // Restablecer el mapa base a OpenStreetMap
+      pointsGeoJSON = null;
+      studyAreaGeoJSON = null;
+
       document.getElementById('basemap').value = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
       initializeMap("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
 
-      // Limpiar la selección de botones
-      document.getElementById('toggle-points').classList.remove('active');
-      document.getElementById('toggle-polygons').classList.remove('active');
+      document.querySelectorAll('button.active').forEach(button => button.classList.remove('active'));
+      document.querySelectorAll('input[type="range"]').forEach(input => input.value = input.defaultValue);
+      document.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
 
-      // Limpiar el campo de entrada del CSV
-      const csvInput = document.getElementById('csv');
-      csvInput.value = ""; // Resetea el input
-      csvInput.disabled = false; // Habilitar nuevamente
+      document.getElementById('csv').value = "";
+      document.getElementById('study-area').value = "";
+      document.getElementById('csv').disabled = false;
     });
+
 
 
     document.getElementById('basemap').addEventListener('change', (event) => {
@@ -318,6 +433,10 @@ function updateStyles() {
     document.getElementById('polygon-color').addEventListener('change', updateStyles);
     document.getElementById('polygon-opacity').addEventListener('input', updateStyles);
     document.getElementById('polygon-border-width').addEventListener('input', updateStyles);
+    document.getElementById('study-area-color').addEventListener('change', updateStudyAreaStyle);
+    document.getElementById('study-area-opacity').addEventListener('input', updateStudyAreaStyle);
+    document.getElementById('study-area-border-width').addEventListener('input', updateStudyAreaStyle);
+
 
    // Controladores para visualizar puntos y polígonos
     document.getElementById('toggle-points').addEventListener('click', () => {
