@@ -178,14 +178,14 @@
       if (voronoiLayer) map.addLayer(voronoiLayer);
     }
 
-        function csvToGeoJSON(csvData) {
+    function csvToGeoJSON(csvData) {
       const lines = csvData.split('\n').filter(line => line.trim() !== '');
-      const headers = lines[0].split(',');
+      const headers = lines[0].split(',').map(header => header.trim().toLowerCase()); // Convertir encabezados a minúsculas
       const latIndex = headers.indexOf('lat');
       const lonIndex = headers.indexOf('lon');
-    
+
       if (latIndex === -1 || lonIndex === -1) {
-        alert('El archivo CSV debe contener columnas "lat" y "lon".');
+        alert('El archivo CSV debe contener columnas "lat" y "lon" (no importa mayúsculas/minúsculas).');
         return null;
       }
 
@@ -213,6 +213,7 @@
 
       return { type: 'FeatureCollection', features };
     }
+
 
     function getPointStyle() {
       return {
