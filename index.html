@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Polígonos de Voronoi/Thiessen.js</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Optimizado - Voronoi/Thiessen</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
@@ -13,7 +13,6 @@
       margin: 0;
       height: 100vh;
     }
-
     #sidebar {
       width: 300px;
       background: #f4f4f4;
@@ -22,18 +21,16 @@
       display: flex;
       flex-direction: column;
       overflow-y: auto;
+      font-family: sans-serif;
     }
-
     #map {
       flex: 1;
       height: 100vh;
     }
-
     label {
       margin-top: 10px;
       font-weight: bold;
     }
-
     button, select {
       margin-top: 15px;
       padding: 10px;
@@ -44,11 +41,9 @@
       cursor: pointer;
       font-size: 14px;
     }
-
     button:hover {
       background-color: #0056b3;
     }
-
     select {
       background-color: white;
       color: #007bff;
@@ -56,11 +51,9 @@
       border-radius: 10px;
       font-size: 14px;
     }
-
     button.active {
       background-color: #28a745;
     }
-
     input, .slider {
       margin-top: 5px;
       padding: 5px;
@@ -69,457 +62,487 @@
       font-size: 14px;
       width: 100%;
     }
-
     .slider-container {
       margin-top: 10px;
     }
-
     h3, h4 {
       margin: 10px 0 5px;
     }
   </style>
 </head>
 <body>
-  <div id="sidebar">
-    <!-- Imagen en la parte superior -->
-    <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
-      <div style="text-align: center;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/1/11/Georgy_Voronoy.jpg" alt="Voronoi" style="width: 100%; border-radius: 10px;">
-        <label style="display: block; font-size: 14px; margin-top: 5px; color: #555;">Voronoi</label>
-      </div>
-      <div style="text-align: center;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/bd/Alfred_H._Thiessen%2C_1934.jpg" alt="Thiessen" style="width: 40%; border-radius: 10px;">
-        <label style="display: block; font-size: 14px; margin-top: 5px; color: #555;">Thiessen</label>
-      </div>
+<div id="sidebar">
+  <!-- Imagen en la parte superior -->
+  <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
+    <div style="text-align: center;">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/1/11/Georgy_Voronoy.jpg" alt="Voronoi" style="width: 100%; border-radius: 10px;">
+      <label style="display: block; font-size: 14px; margin-top: 5px; color: #555;">Voronoi</label>
     </div>
-
-
-
-    <label for="basemap">Basemap:</label>
-    <select id="basemap">
-      <option value="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" selected>OpenStreetMap</option>
-      <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap color</option>
-      <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap Gris</option>
-    </select>
-
-    <label for="csv">Subir CSV:</label>
-    <input id="csv" type="file" accept=".csv" />
-
-    <button id="toggle-points">Visualizar Puntos</button>
-    <button id="toggle-polygons">Visualizar Polígonos</button>
-
-    <div id="style-config">
-      <h3>Configuraciones de Estilo</h3>
-      <h4>Puntos:</h4>
-      <label for="point-color">Color:</label>
-      <select id="point-color">
-        <option value="blue" selected>Azul</option>
-        <option value="red">Rojo</option>
-        <option value="green">Verde</option>
-        <option value="purple">Morado</option>
-        <option value="orange">Naranja</option>
-        <option value="yellow">Amarillo</option>
-        <option value="brown">Marrón</option>
-        <option value="pink">Rosa</option>
-        <option value="black">Negro</option>
-      </select>
-      <div class="slider-container">
-        <label for="point-border-width">Ancho de borde:</label>
-        <input type="range" id="point-border-width" min="0.5" max="4" step="0.1" value="1.5" class="slider">
-      </div>
-
-      <h3>Área de Estudio</h3>
-      <label for="study-area">Subir GeoJSON:</label>
-      <input id="study-area" type="file" accept=".geojson" />
-      <button id="toggle-study-area">Visualizar Área de Estudio</button>
-      <h4>Estilo del Área:</h4>
-      <label for="study-area-color">Color de Relleno:</label>
-      <select id="study-area-color">
-        <option value="blue" selected>Azul</option>
-        <option value="red">Rojo</option>
-        <option value="green">Verde</option>
-        <option value="purple">Morado</option>
-        <option value="orange">Naranja</option>
-      </select>
-      <div class="slider-container">
-        <label for="study-area-opacity">Transparencia:</label>
-        <input type="range" id="study-area-opacity" min="0.1" max="1" step="0.1" value="0.5" class="slider">
-      </div>
-      <div class="slider-container">
-        <label for="study-area-border-width">Ancho de Borde:</label>
-        <input type="range" id="study-area-border-width" min="0.5" max="4" step="0.1" value="1.5" class="slider">
-      </div>
-
-
-      <h4>Polígonos:</h4>
-      <label for="polygon-color">Color de Relleno:</label>
-      <select id="polygon-color">
-        <option value="green" selected>Verde</option>
-        <option value="blue">Azul</option>
-        <option value="red">Rojo</option>
-        <option value="purple">Morado</option>
-        <option value="orange">Naranja</option>
-        <option value="yellow">Amarillo</option>
-        <option value="brown">Marrón</option>
-        <option value="pink">Rosa</option>
-        <option value="black">Negro</option>
-      </select>
-      <div class="slider-container">
-        <label for="polygon-opacity">Transparencia:</label>
-        <input type="range" id="polygon-opacity" min="0.1" max="1" step="0.1" value="0.3" class="slider">
-      </div>
-      <div class="slider-container">
-        <label for="polygon-border-width">Ancho de borde:</label>
-        <input type="range" id="polygon-border-width" min="0.5" max="4" step="0.1" value="1.2" class="slider">
-      </div>
+    <div style="text-align: center;">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/b/bd/Alfred_H._Thiessen%2C_1934.jpg" alt="Thiessen" style="width: 40%; border-radius: 10px;">
+      <label style="display: block; font-size: 14px; margin-top: 5px; color: #555;">Thiessen</label>
     </div>
-
-
-    <button id="export">Exportar GeoJSON</button>
-    <button id="reset">Reiniciar</button>
   </div>
 
-  <div id="map"></div>
-  <script>
-    let map = null;
-    let pointsLayer = null;
-    let voronoiLayer = null;
-    let pointsGeoJSON = null;
-    let studyAreaLayer = null;
-    let studyAreaGeoJSON = null;
+  <label for="basemap">Basemap:</label>
+  <select id="basemap">
+    <option value="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" selected>OpenStreetMap</option>
+    <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/capabaseargenmap@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap color</option>
+    <option value="https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png">Argenmap Gris</option>
+  </select>
 
+  <h3>Capa de puntos</h3>
+  <label for="csv">Subir CSV:</label>
+  <input id="csv" type="file" accept=".csv" />
+  <button id="toggle-points">Visualizar Puntos</button>
 
-    function initializeMap(basemapUrl) {
-      const currentView = map ? map.getCenter() : [0, 0];
-      const currentZoom = map ? map.getZoom() : 2;
+  <div id="style-config">
+    <h3>Configuraciones de Estilo</h3>
+    <h4>Puntos:</h4>
+    <label for="point-color">Color:</label>
+    <select id="point-color">
+      <option value="blue" selected>Azul</option>
+      <option value="red">Rojo</option>
+      <option value="green">Verde</option>
+      <!-- ... otros colores ... -->
+    </select>
+    <div class="slider-container">
+      <label for="point-border-width">Ancho de borde:</label>
+      <input type="range" id="point-border-width" min="0.5" max="4" step="0.1" value="1.5" class="slider">
+    </div>
 
-      if (!map) {
-        map = L.map('map').setView(currentView, currentZoom);
-      }
+    <h3>Área de Estudio</h3>
+    <label for="study-area">Subir GeoJSON:</label>
+    <input id="study-area" type="file" accept=".geojson" />
+    <button id="toggle-study-area">Visualizar Área de Estudio</button>
+    <h4>Estilo del Área:</h4>
+    <label for="study-area-color">Color de Relleno:</label>
+    <select id="study-area-color">
+      <option value="blue" selected>Azul</option>
+      <option value="red">Rojo</option>
+      <option value="green">Verde</option>
+    </select>
+    <div class="slider-container">
+      <label for="study-area-opacity">Transparencia:</label>
+      <input type="range" id="study-area-opacity" min="0.1" max="1" step="0.1" value="0.5" class="slider">
+    </div>
+    <div class="slider-container">
+      <label for="study-area-border-width">Ancho de Borde:</label>
+      <input type="range" id="study-area-border-width" min="0.5" max="4" step="0.1" value="1.5" class="slider">
+    </div>
 
-      // Eliminar el mapa base actual
-      map.eachLayer(layer => {
-        if (layer._url !== basemapUrl) {
-          map.removeLayer(layer);
+    <button id="toggle-polygons">Generar Polígonos</button>
+    <h4>Polígonos de Voronoi/Thiessen:</h4>
+    <label for="polygon-color">Color de Relleno:</label>
+    <select id="polygon-color">
+      <option value="green" selected>Verde</option>
+      <option value="blue">Azul</option>
+      <option value="red">Rojo</option>
+    </select>
+    <div class="slider-container">
+      <label for="polygon-opacity">Transparencia:</label>
+      <input type="range" id="polygon-opacity" min="0.1" max="1" step="0.1" value="0.3" class="slider">
+    </div>
+    <div class="slider-container">
+      <label for="polygon-border-width">Ancho de borde:</label>
+      <input type="range" id="polygon-border-width" min="0.5" max="4" step="0.1" value="1.2" class="slider">
+    </div>
+  </div>
+
+  <button id="export">Exportar GeoJSON</button>
+  <button id="reset">Reiniciar</button>
+</div>
+
+<div id="map"></div>
+
+<script>
+let map;
+let baseMapLayer;
+
+// Capas de datos
+let pointsLayer = null;
+let pointsGeoJSON = null;
+
+let studyAreaLayer = null;
+let studyAreaGeoJSON = null;
+
+let voronoiLayer = null;
+let voronoiGeoJSON = null; // Guardamos aquí el resultado para no recalcular
+
+// Inicializa el mapa
+function initMap() {
+  map = L.map('map').setView([0, 0], 2);
+  // Carga inicial del basemap
+  setBaseMap(document.getElementById('basemap').value);
+}
+
+// Cambia el mapa base sin reiniciar todo
+function setBaseMap(url) {
+  if (baseMapLayer) {
+    map.removeLayer(baseMapLayer);
+  }
+  baseMapLayer = L.tileLayer(url, { maxZoom: 18 });
+  baseMapLayer.addTo(map);
+}
+
+// Convierte CSV a GeoJSON
+function csvToGeoJSON(csvData) {
+  const lines = csvData.split('\n').filter(line => line.trim() !== '');
+  if (lines.length < 2) {
+    console.warn('CSV vacío o insuficiente');
+    return null;
+  }
+
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const latIndex = headers.indexOf('lat');
+  const lonIndex = headers.indexOf('lon');
+
+  if (latIndex === -1 || lonIndex === -1) {
+    console.warn('El CSV debe contener columnas lat y lon');
+    return null;
+  }
+
+  const features = lines.slice(1).map(line => {
+    const values = line.split(',');
+    const lat = parseFloat(values[latIndex]);
+    const lon = parseFloat(values[lonIndex]);
+
+    if (!isNaN(lat) && !isNaN(lon)) {
+      const properties = {};
+      headers.forEach((header, i) => {
+        if (i !== latIndex && i !== lonIndex) {
+          properties[header] = values[i];
         }
       });
-
-      // Agregar el nuevo mapa base
-      L.tileLayer(basemapUrl, { maxZoom: 18 }).addTo(map);
-
-      // Re-agregar capas activas
-      if (pointsLayer && document.getElementById('toggle-points').classList.contains('active')) {
-        map.addLayer(pointsLayer);
-      }
-
-      if (voronoiLayer && document.getElementById('toggle-polygons').classList.contains('active')) {
-        map.addLayer(voronoiLayer);
-      }
-
-      if (studyAreaLayer && document.getElementById('toggle-study-area').classList.contains('active')) {
-        map.addLayer(studyAreaLayer);
-      }
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lon, lat] },
+        properties
+      };
     }
+  }).filter(Boolean);
+
+  if (features.length === 0) {
+    console.warn('CSV sin puntos válidos.');
+    return null;
+  }
+
+  return { type: 'FeatureCollection', features };
+}
+
+// Funciones de Estilo
+function getPointStyle() {
+  return {
+    color: 'black',
+    weight: parseFloat(document.getElementById('point-border-width').value),
+    fillColor: document.getElementById('point-color').value,
+    fillOpacity: 0.7
+  };
+}
+
+function getPolygonStyle() {
+  return {
+    color: 'black',
+    weight: parseFloat(document.getElementById('polygon-border-width').value),
+    fillColor: document.getElementById('polygon-color').value,
+    fillOpacity: parseFloat(document.getElementById('polygon-opacity').value)
+  };
+}
+
+function onFeatureClick(feature, layer) {
+    // Extraer las propiedades del feature
+    const properties = feature.properties;
+
+    // Generar contenido dinámico con los atributos del feature
+    const content = properties
+        ? Object.entries(properties)
+            .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+            .join('<br>')
+        : 'Sin atributos disponibles';
+
+    // Vincular popup al clic en el feature
+    layer.bindPopup(content).openPopup();
+}
 
 
+function getStudyAreaStyle() {
+  return {
+    color: 'black',
+    weight: parseFloat(document.getElementById('study-area-border-width').value),
+    fillColor: document.getElementById('study-area-color').value,
+    fillOpacity: parseFloat(document.getElementById('study-area-opacity').value)
+  };
+}
 
-    function csvToGeoJSON(csvData) {
-      const lines = csvData.split('\n').filter(line => line.trim() !== '');
-      if (lines.length < 2) {
-        alert('El archivo CSV no contiene suficientes datos.');
-        return null;
-      }
+// Actualización de estilos sin volver a cargar datos
+function updatePointsStyle() {
+  if (pointsLayer) pointsLayer.setStyle(getPointStyle());
+}
 
-      const headers = lines[0].split(',').map(header => header.trim().toLowerCase());
-      const latIndex = headers.indexOf('lat');
-      const lonIndex = headers.indexOf('lon');
+function updateStudyAreaStyle() {
+  if (studyAreaLayer) studyAreaLayer.setStyle(getStudyAreaStyle());
+}
 
-      if (latIndex === -1 || lonIndex === -1) {
-        alert('El archivo CSV debe contener columnas "lat" y "lon".');
-        return null;
-      }
+function updateVoronoiStyle() {
+  if (voronoiLayer) voronoiLayer.setStyle(getPolygonStyle());
+}
 
-      const features = lines.slice(1).map(line => {
-        const values = line.split(',');
-        const lat = parseFloat(values[latIndex]);
-        const lon = parseFloat(values[lonIndex]);
+// Generar Voronoi
+      function generateVoronoi() {
+          if (!pointsGeoJSON) {
+              alert('Por favor, cargue un archivo CSV con puntos antes de generar los polígonos.');
+              return;
+          }
 
-        if (!isNaN(lat) && !isNaN(lon)) {
-          const properties = {};
-          headers.forEach((header, index) => {
-            if (index !== latIndex && index !== lonIndex) {
-              properties[header] = values[index];
-            }
+          // Verificar y extraer un polígono válido del área de estudio
+          if (studyAreaGeoJSON) {
+              studyAreaGeoJSON = extractValidPolygon(studyAreaGeoJSON);
+              if (!studyAreaGeoJSON) {
+                  alert('El área de estudio no es un polígono válido.');
+                  return;
+              }
+          }
+
+          // Generar los polígonos de Voronoi con el bbox adecuado
+          const bbox = studyAreaGeoJSON ? turf.bbox(studyAreaGeoJSON) : turf.bbox(pointsGeoJSON);
+          let voronoi = turf.voronoi(pointsGeoJSON, { bbox });
+
+          if (!voronoi || !voronoi.features || voronoi.features.length === 0) {
+              alert('No se pudieron generar los polígonos de Voronoi.');
+              return;
+          }
+
+          // Filtrar polígonos válidos en Voronoi
+          voronoi.features = voronoi.features.filter(f => f && f.geometry &&
+              (f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"));
+
+          // Recortar los polígonos al área de estudio (si existe)
+          if (studyAreaGeoJSON) {
+              voronoi.features = voronoi.features.map(feature => {
+                  try {
+                      return turf.intersect(feature, studyAreaGeoJSON);
+                  } catch (e) {
+                      console.warn('Error al recortar un polígono Voronoi:', e);
+                      return null;
+                  }
+              }).filter(Boolean);
+
+              if (voronoi.features.length === 0) {
+                  alert('No se generaron polígonos dentro del área de estudio.');
+                  return;
+              }
+          }
+
+          // Transferir propiedades del punto más cercano al polígono
+          voronoi.features.forEach((polygon) => {
+              const centroid = turf.centroid(polygon).geometry.coordinates; // Calcula el centroide del polígono
+              const nearestPoint = turf.nearestPoint(turf.point(centroid), pointsGeoJSON); // Encuentra el punto más cercano
+              if (nearestPoint && nearestPoint.properties) {
+                  // Transferir las propiedades del punto al polígono
+                  polygon.properties = {
+                      ...nearestPoint.properties, // Copia todas las propiedades del punto
+                      lat: nearestPoint.geometry.coordinates[1], // Latitud del punto
+                      lon: nearestPoint.geometry.coordinates[0]  // Longitud del punto
+                  };
+              }
           });
 
-          return {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [lon, lat] },
-            properties: properties
-          };
-        }
-      }).filter(Boolean);
 
-      if (features.length === 0) {
-        alert('El archivo CSV no contiene puntos válidos.');
-        return null;
-      }
-
-      return { type: 'FeatureCollection', features };
-    }
-
-
-    function getPointStyle() {
-      return {
-        color: 'black',
-        weight: parseFloat(document.getElementById('point-border-width').value),
-        fillColor: document.getElementById('point-color').value,
-        fillOpacity: 0.7
-      };
-    }
-
-    function getPolygonStyle() {
-      return {
-        color: 'black',
-        weight: parseFloat(document.getElementById('polygon-border-width').value),
-        fillColor: document.getElementById('polygon-color').value,
-        fillOpacity: parseFloat(document.getElementById('polygon-opacity').value)
-      };
-    }
-
-    function getStudyAreaStyle() {
-      return {
-        color: 'black',
-        weight: parseFloat(document.getElementById('study-area-border-width').value),
-        fillColor: document.getElementById('study-area-color').value,
-        fillOpacity: parseFloat(document.getElementById('study-area-opacity').value),
-      };
-    }
-
-
-    function updateStyles() {
-      if (pointsGeoJSON && pointsLayer && document.getElementById('toggle-points').classList.contains('active')) {
-        map.removeLayer(pointsLayer);
-        pointsLayer = L.geoJSON(pointsGeoJSON, {
-          pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
-        }).addTo(map);
-      }
-
-      if (pointsGeoJSON && voronoiLayer && document.getElementById('toggle-polygons').classList.contains('active')) {
-        map.removeLayer(voronoiLayer);
-        const bbox = turf.bbox(pointsGeoJSON);
-        const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
-        if (voronoi) {
-          voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle }).addTo(map);
-        }
-      }
-    }
-
-    function updateStudyAreaStyle() {
-      if (studyAreaGeoJSON && studyAreaLayer && document.getElementById('toggle-study-area').classList.contains('active')) {
-        map.removeLayer(studyAreaLayer);
-        studyAreaLayer = L.geoJSON(studyAreaGeoJSON, { style: getStudyAreaStyle() }).addTo(map);
-      }
-    }
-
-
-    document.getElementById('csv').addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const csvData = e.target.result;
-        pointsGeoJSON = csvToGeoJSON(csvData);
-
-        if (pointsGeoJSON) {
-          document.getElementById('csv').disabled = true; // Deshabilitar botón CSV
-          if (pointsLayer) map.removeLayer(pointsLayer);
-          pointsLayer = L.geoJSON(pointsGeoJSON, {
-            pointToLayer: (feature, latlng) => L.circleMarker(latlng, getPointStyle())
+          // Guardar el resultado y agregar la capa al mapa
+          voronoiGeoJSON = voronoi;
+          if (voronoiLayer) {
+              map.removeLayer(voronoiLayer);
+          }
+          voronoiLayer = L.geoJSON(voronoiGeoJSON, {
+          style: getPolygonStyle,
+          onEachFeature: onFeatureClick
           }).addTo(map);
-          map.fitBounds(pointsLayer.getBounds());
+          document.getElementById('toggle-polygons').classList.add('active');
+          alert('Polígonos generados exitosamente.');
+      }
 
-      // Activar botón de visualización de puntos
-          const togglePointsButton = document.getElementById('toggle-points');
-          togglePointsButton.classList.add('active');
-        }
-      };
-      reader.readAsText(file);
-    });
-
-// Controlador carga "Área de studio"
-    document.getElementById('study-area').addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const geojson = JSON.parse(e.target.result);
-          if (!geojson.features || !geojson.features.length) {
-            alert('El archivo GeoJSON no contiene características válidas.');
-            studyAreaGeoJSON = null;
-            return;
+      // Extraer un polígono válido de un GeoJSON
+      function extractValidPolygon(geojson) {
+          if (geojson.type === 'FeatureCollection') {
+              // Si es un FeatureCollection, tomar el primer polígono válido
+              const validFeature = geojson.features.find(f => f.geometry &&
+                  (f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon"));
+              if (validFeature) {
+                  return turf.cleanCoords(validFeature);
+              }
+          } else if (geojson.type === 'Feature') {
+              // Si ya es un Feature, verificar que sea un polígono válido
+              if (geojson.geometry &&
+                  (geojson.geometry.type === "Polygon" || geojson.geometry.type === "MultiPolygon")) {
+                  return turf.cleanCoords(geojson);
+              }
           }
-          studyAreaGeoJSON = geojson;
-          alert('Área de estudio cargada correctamente.');
-        } catch (error) {
-          alert('Error al cargar el archivo GeoJSON. Verifique el formato.');
-          studyAreaGeoJSON = null;
-        }
-      };
-      reader.readAsText(file);
-    });
+          return null; // No se encontró un polígono válido
+      }
 
+// Funciones helper para togglear capas
+function toggleLayer(layer, btn) {
+  if (!layer) {
+    alert('La capa no existe todavía.');
+    return;
+  }
+  if (map.hasLayer(layer)) {
+    map.removeLayer(layer);
+    btn.classList.remove('active'); // Quitar el estado activo
+  } else {
+    map.addLayer(layer);
+    btn.classList.add('active'); // Agregar el estado activo
+  }
+}
 
-      document.getElementById('toggle-study-area').addEventListener('click', () => {
-        if (!studyAreaGeoJSON) {
-          alert('Por favor, cargue un archivo GeoJSON antes de visualizar el área de estudio.');
-          return;
-        }
+// Listener CSV
+document.getElementById('csv').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-        if (studyAreaLayer) {
-          if (map.hasLayer(studyAreaLayer)) {
-            map.removeLayer(studyAreaLayer);
-            document.getElementById('toggle-study-area').classList.remove('active');
-          } else {
-            studyAreaLayer = L.geoJSON(studyAreaGeoJSON, { style: getStudyAreaStyle() }).addTo(map);
-            map.fitBounds(studyAreaLayer.getBounds());
-            document.getElementById('toggle-study-area').classList.add('active');
-          }
-        } else {
-          studyAreaLayer = L.geoJSON(studyAreaGeoJSON, { style: getStudyAreaStyle() }).addTo(map);
-          map.fitBounds(studyAreaLayer.getBounds());
-          document.getElementById('toggle-study-area').classList.add('active');
-        }
-      });
-
-
-// Controlador para Reset
-    document.getElementById('reset').addEventListener('click', () => {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    pointsGeoJSON = csvToGeoJSON(ev.target.result);
+    if (pointsGeoJSON) {
       if (pointsLayer) map.removeLayer(pointsLayer);
-      if (voronoiLayer) map.removeLayer(voronoiLayer);
+      pointsLayer = L.geoJSON(pointsGeoJSON, {
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, getPointStyle()),
+        onEachFeature: onFeatureClick
+      }).addTo(map);
+      document.getElementById('toggle-points').classList.add('active');
+      map.fitBounds(pointsLayer.getBounds());
+      alert('Puntos cargados correctamente.');
+    }
+  };
+  reader.readAsText(file);
+});
+
+// Listener Área de Estudio
+document.getElementById('study-area').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const geojson = JSON.parse(ev.target.result);
+      if (!geojson.features || !geojson.features.length) {
+        alert('GeoJSON sin características válidas.');
+        return;
+      }
+      studyAreaGeoJSON = geojson;
       if (studyAreaLayer) map.removeLayer(studyAreaLayer);
 
-      pointsLayer = null;
-      voronoiLayer = null;
-      studyAreaLayer = null;
+      studyAreaLayer = L.geoJSON(studyAreaGeoJSON, { style: getStudyAreaStyle() }).addTo(map);
+      document.getElementById('toggle-study-area').classList.add('active');
+      map.fitBounds(studyAreaLayer.getBounds());
+      alert('Área de estudio cargada correctamente.');
 
-      pointsGeoJSON = null;
+      // Si ya hay puntos, podemos regenerar Voronoi con el recorte
+      if (pointsGeoJSON && voronoiGeoJSON) {
+        generateVoronoi();
+      }
+    } catch (error) {
+      alert('Error al cargar GeoJSON.');
       studyAreaGeoJSON = null;
+    }
+  };
+  reader.readAsText(file);
+});
 
-      document.getElementById('basemap').value = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-      initializeMap("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
+// Toggle study-area
+document.getElementById('toggle-study-area').addEventListener('click', (e) => {
+  if (!studyAreaGeoJSON) {
+    alert('Cargar GeoJSON primero.');
+    return;
+  }
+  toggleLayer(studyAreaLayer, e.target);
+});
 
-      document.querySelectorAll('button.active').forEach(button => button.classList.remove('active'));
-      document.querySelectorAll('input[type="range"]').forEach(input => input.value = input.defaultValue);
-      document.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+// Toggle points
+document.getElementById('toggle-points').addEventListener('click', (e) => {
+  if (!pointsLayer) {
+    alert('No hay puntos cargados.');
+    return;
+  }
+  toggleLayer(pointsLayer, e.target);
+});
 
-      document.getElementById('csv').value = "";
-      document.getElementById('study-area').value = "";
-      document.getElementById('csv').disabled = false;
-    });
+// Toggle polygons (Voronoi)
+document.getElementById('toggle-polygons').addEventListener('click', (e) => {
+  if (!voronoiGeoJSON) {
+    // No existe todavía, generamos
+    generateVoronoi();
+  } else {
+    toggleLayer(voronoiLayer, e.target);
+  }
+});
 
+// Exportar GeoJSON
+document.getElementById('export').addEventListener('click', () => {
+  if (!voronoiGeoJSON) {
+    alert('No hay polígonos generados para exportar.');
+    return;
+  }
+  // Transferir propiedades del punto más cercano
+  voronoiGeoJSON.features.forEach((polygon) => {
+    const centroid = turf.centroid(polygon).geometry.coordinates;
+    const nearestPoint = turf.nearestPoint(turf.point(centroid), pointsGeoJSON);
+    if (nearestPoint && nearestPoint.properties) {
+      polygon.properties = {
+        ...nearestPoint.properties,
+        lat: nearestPoint.geometry.coordinates[1],
+        lon: nearestPoint.geometry.coordinates[0]
+      };
+    }
+  });
 
+  const blob = new Blob([JSON.stringify(voronoiGeoJSON)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'PoligonosVoronoi.geojson';
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
-    document.getElementById('basemap').addEventListener('change', (event) => {
-      const basemapUrl = event.target.value;
-      initializeMap(basemapUrl);
-    });
+// Reset
+document.getElementById('reset').addEventListener('click', () => {
+  if (pointsLayer) map.removeLayer(pointsLayer);
+  if (voronoiLayer) map.removeLayer(voronoiLayer);
+  if (studyAreaLayer) map.removeLayer(studyAreaLayer);
 
-    document.getElementById('point-color').addEventListener('change', updateStyles);
-    document.getElementById('point-border-width').addEventListener('input', updateStyles);
-    document.getElementById('polygon-color').addEventListener('change', updateStyles);
-    document.getElementById('polygon-opacity').addEventListener('input', updateStyles);
-    document.getElementById('polygon-border-width').addEventListener('input', updateStyles);
-    document.getElementById('study-area-color').addEventListener('change', updateStudyAreaStyle);
-    document.getElementById('study-area-opacity').addEventListener('input', updateStudyAreaStyle);
-    document.getElementById('study-area-border-width').addEventListener('input', updateStudyAreaStyle);
+  pointsLayer = null;
+  voronoiLayer = null;
+  studyAreaLayer = null;
 
+  pointsGeoJSON = null;
+  studyAreaGeoJSON = null;
+  voronoiGeoJSON = null;
 
-   // Controladores para visualizar puntos y polígonos
-    document.getElementById('toggle-points').addEventListener('click', () => {
-      if (pointsLayer) {
-        if (map.hasLayer(pointsLayer)) {
-          map.removeLayer(pointsLayer);
-          document.getElementById('toggle-points').classList.remove('active');
-        } else {
-          map.addLayer(pointsLayer);
-          document.getElementById('toggle-points').classList.add('active');
-        }
-      } else {
-        alert('No hay puntos para visualizar. Por favor, cargue un archivo CSV primero.');
-      }
-    });
+  document.getElementById('csv').value = "";
+  document.getElementById('study-area').value = "";
+  document.getElementById('toggle-points').classList.remove('active');
+  document.getElementById('toggle-polygons').classList.remove('active');
+  document.getElementById('toggle-study-area').classList.remove('active');
+});
 
-    document.getElementById('toggle-polygons').addEventListener('click', () => {
-      if (voronoiLayer) {
-        if (map.hasLayer(voronoiLayer)) {
-          map.removeLayer(voronoiLayer);
-          document.getElementById('toggle-polygons').classList.remove('active');
-        } else {
-          map.addLayer(voronoiLayer);
-          document.getElementById('toggle-polygons').classList.add('active');
-        }
-      } else {
-        if (pointsGeoJSON) {
-          const bbox = turf.bbox(pointsGeoJSON);
-          const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
-          if (voronoi) {
-            voronoiLayer = L.geoJSON(voronoi, { style: getPolygonStyle() }).addTo(map);
-            document.getElementById('toggle-polygons').classList.add('active');
-          } else {
-            alert('No se pudo generar el polígono Voronoi.');
-          }
-        } else {
-          alert('No hay datos para generar polígonos. Por favor, cargue un archivo CSV primero.');
-        }
-      }
-    });
+// Actualizar estilos al cambiar controles
+document.getElementById('point-color').addEventListener('change', updatePointsStyle);
+document.getElementById('point-border-width').addEventListener('input', updatePointsStyle);
+document.getElementById('polygon-color').addEventListener('change', updateVoronoiStyle);
+document.getElementById('polygon-opacity').addEventListener('input', updateVoronoiStyle);
+document.getElementById('polygon-border-width').addEventListener('input', updateVoronoiStyle);
+document.getElementById('study-area-color').addEventListener('change', updateStudyAreaStyle);
+document.getElementById('study-area-opacity').addEventListener('input', updateStudyAreaStyle);
+document.getElementById('study-area-border-width').addEventListener('input', updateStudyAreaStyle);
 
-    // Controladores para exportar GeoJson
+// Cambio de Basemap
+document.getElementById('basemap').addEventListener('change', (e) => {
+  setBaseMap(e.target.value);
+});
 
-      document.getElementById('export').addEventListener('click', () => {
-        if (voronoiLayer && pointsGeoJSON) {
-          const bbox = turf.bbox(pointsGeoJSON);
-          const voronoi = turf.voronoi(pointsGeoJSON, { bbox });
-
-          if (voronoi && voronoi.features && voronoi.features.length > 0) {
-            voronoi.features.forEach((polygon) => {
-              const centroid = turf.centroid(polygon).geometry.coordinates;
-
-              // Encontrar el punto más cercano al centroide
-              const nearestPoint = turf.nearestPoint(turf.point(centroid), pointsGeoJSON);
-
-              if (nearestPoint && nearestPoint.properties) {
-                // Transferir propiedades del punto al polígono
-                polygon.properties = {
-                  ...nearestPoint.properties,
-                  lat: nearestPoint.geometry.coordinates[1], // Latitud
-                  lon: nearestPoint.geometry.coordinates[0]  // Longitud
-                };
-              }
-            });
-
-            const blob = new Blob([JSON.stringify(voronoi)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'PoligonosVoroni.geojson';
-            a.click();
-
-            URL.revokeObjectURL(url); // Limpieza de recursos
-          } else {
-            alert('No hay polígonos para exportar.');
-          }
-        } else {
-          alert('No hay datos de polígonos generados para exportar.');
-        }
-      });
-
-    initializeMap('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-  </script>
+initMap();
+</script>
 </body>
 </html>
