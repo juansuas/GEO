@@ -7,68 +7,108 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-  <style>
-    body {
-      display: flex;
-      margin: 0;
-      height: 100vh;
-    }
-    #sidebar {
-      width: 300px;
-      background: #f4f4f4;
-      padding: 15px;
-      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      font-family: sans-serif;
-    }
-    #map {
-      flex: 1;
-      height: 100vh;
-    }
-    label {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    button, select {
-      margin-top: 15px;
-      padding: 10px;
-      border: none;
-      border-radius: 15px;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    select {
-      background-color: white;
-      color: #007bff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      font-size: 14px;
-    }
-    button.active {
-      background-color: #28a745;
-    }
-    input, .slider {
-      margin-top: 5px;
-      padding: 5px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      font-size: 14px;
-      width: 100%;
-    }
-    .slider-container {
-      margin-top: 10px;
-    }
-    h3, h4 {
-      margin: 10px 0 5px;
-    }
-  </style>
+<style>
+  body {
+    display: flex;
+    margin: 0;
+    height: 100vh;
+  }
+
+  #sidebar {
+    width: 300px;
+    background: #f4f4f4;
+    padding: 15px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow-y: auto; /* Solo scroll vertical */
+    overflow-x: hidden; /* Evita el scroll horizontal */
+    font-family: sans-serif;
+  }
+
+  #sidebar * {
+    max-width: 100%; /* Evita que cualquier elemento dentro del sidebar exceda su ancho */
+    box-sizing: border-box; /* Incluye el padding y el borde dentro del ancho del elemento */
+  }
+
+  #sidebar-footer {
+    text-align: center;
+    font-size: 12px;
+    color: #555;
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+    width: 100%;
+  }
+
+  #sidebar-footer a {
+    text-decoration: none;
+    color: #555;
+  }
+
+  #sidebar-footer img {
+    vertical-align: middle;
+    width: 20px;
+    margin-right: 5px;
+  }
+
+  #map {
+    flex: 1;
+    height: 100vh;
+  }
+
+  label {
+    margin-top: 10px;
+    font-weight: bold;
+  }
+
+  button, select {
+    margin-top: 15px;
+    padding: 10px;
+    border: none;
+    border-radius: 15px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%; /* Asegura que los botones ocupen el ancho completo del sidebar */
+  }
+
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  select {
+    background-color: white;
+    color: #007bff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 14px;
+    width: 100%; /* Asegura que el dropdown no exceda el ancho */
+  }
+
+  button.active {
+    background-color: #28a745;
+  }
+
+  input, .slider {
+    margin-top: 5px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 14px;
+    width: 100%; /* Evita que los inputs desborden */
+  }
+
+  .slider-container {
+    margin-top: 10px;
+  }
+
+  h3, h4 {
+    margin: 10px 0 5px;
+  }
+</style>
 </head>
 <body>
 <div id="sidebar">
@@ -83,6 +123,7 @@
       <label style="display: block; font-size: 14px; margin-top: 5px; color: #555;">Thiessen</label>
     </div>
   </div>
+
 
   <label for="basemap">Basemap:</label>
   <select id="basemap">
@@ -104,7 +145,12 @@
       <option value="blue" selected>Azul</option>
       <option value="red">Rojo</option>
       <option value="green">Verde</option>
-      <!-- ... otros colores ... -->
+      <option value="purple">Morado</option>
+      <option value="orange">Naranja</option>
+      <option value="yellow">Amarillo</option>
+      <option value="brown">Marrón</option>
+      <option value="pink">Rosa</option>
+      <option value="black">Negro</option>
     </select>
     <div class="slider-container">
       <label for="point-border-width">Ancho de borde:</label>
@@ -121,6 +167,12 @@
       <option value="blue" selected>Azul</option>
       <option value="red">Rojo</option>
       <option value="green">Verde</option>
+      <option value="purple">Morado</option>
+      <option value="orange">Naranja</option>
+      <option value="yellow">Amarillo</option>
+      <option value="brown">Marrón</option>
+      <option value="pink">Rosa</option>
+      <option value="black">Negro</option>
     </select>
     <div class="slider-container">
       <label for="study-area-opacity">Transparencia:</label>
@@ -138,6 +190,12 @@
       <option value="green" selected>Verde</option>
       <option value="blue">Azul</option>
       <option value="red">Rojo</option>
+      <option value="purple">Morado</option>
+      <option value="orange">Naranja</option>
+      <option value="yellow">Amarillo</option>
+      <option value="brown">Marrón</option>
+      <option value="pink">Rosa</option>
+      <option value="black">Negro</option>
     </select>
     <div class="slider-container">
       <label for="polygon-opacity">Transparencia:</label>
@@ -151,11 +209,22 @@
 
   <button id="export">Exportar GeoJSON</button>
   <button id="reset">Reiniciar</button>
+
+  <div id="sidebar-footer">
+    <span>2024 | J. Suasnábar - M. Ortmann - S. Linares</span>
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" style="text-decoration: none; color: black; display: flex; justify-content: center; align-items: center; margin-top: 10px; gap: 5px;">
+      <img src="https://mirrors.creativecommons.org/presskit/icons/cc.svg" alt="Creative Commons" style="width: 20px;">
+      <img src="https://mirrors.creativecommons.org/presskit/icons/by.svg" alt="BY" style="width: 20px;">
+      <img src="https://mirrors.creativecommons.org/presskit/icons/nc.svg" alt="NC" style="width: 20px;">
+      <img src="https://mirrors.creativecommons.org/presskit/icons/sa.svg" alt="SA" style="width: 20px;">
+    </a>
+</div>
 </div>
 
-<div id="map"></div>
 
+<div id="map"></div>
 <script>
+
 let map;
 let baseMapLayer;
 
@@ -543,6 +612,8 @@ document.getElementById('basemap').addEventListener('change', (e) => {
 });
 
 initMap();
+
+
 </script>
 </body>
 </html>
